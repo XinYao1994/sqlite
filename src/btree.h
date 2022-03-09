@@ -41,7 +41,6 @@ typedef struct BtCursor BtCursor;
 typedef struct BtShared BtShared;
 typedef struct BtreePayload BtreePayload;
 
-
 int sqlite3BtreeOpen(
   sqlite3_vfs *pVfs,       /* VFS to use with this b-tree */
   const char *zFilename,   /* Name of database file to open */

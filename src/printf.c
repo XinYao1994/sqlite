@@ -1341,6 +1341,21 @@ void sqlite3_log(int iErrCode, const char *zFormat, ...){
   }
 }
 
+// begin xyao
+void sqlite3_log_file_v2(FILE *fp, const char *zFormat, ...){
+	va_list ap;
+	StrAccum acc;                          /* String accumulator */
+	char zBuf[SQLITE_PRINT_BUF_SIZE*3];    /* Complete log message */
+	sqlite3StrAccumInit(&acc, 0, zBuf, sizeof(zBuf), 0);
+	va_start(ap, zFormat);
+	sqlite3_str_vappendf(&acc, zFormat, ap);
+	va_end(ap);
+	sqlite3StrAccumFinish(&acc);
+	fprintf(fp,"%s", zBuf);
+	fflush(fp);
+}
+// end xyao
+
 #if defined(SQLITE_DEBUG) || defined(SQLITE_HAVE_OS_TRACE)
 /*
 ** A version of printf() that understands %lld.  Used for debugging.
