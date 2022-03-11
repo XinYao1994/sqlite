@@ -17,6 +17,7 @@
 
 // begin xyao
 #include "sqliteInt.h"
+#include <pthread.h>
 #define BTREE_TXN_TRACE_LOG
 
 #ifdef BTREE_TXN_TRACE_LOG
@@ -24,6 +25,7 @@ static int btree_inTxn = 0;
 static uint64_t btree_txn_id = 0;
 static char btree_txn_log_path[20] = "/tmp/log.txt";
 static FILE *btree_txn_log_fp = 0;
+static pthread_mutex_t btree_txn_log_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 void init_btree_txn_log(){
 	btree_txn_id = btree_txn_id + 1;
@@ -31,11 +33,13 @@ void init_btree_txn_log(){
 }
 
 void btree_txn_log_range(BtCursor *cur, MemPage *pPage) {
+	pthread_mutex_lock(&btree_txn_log_mutex);
 	if(btree_inTxn){
 		btree_txn_log_fp = fopen(btree_txn_log_path, "a");
 		sqlite3_log_file_v2(btree_txn_log_fp, "%lu: %u %u\n", btree_txn_id, cur->pgnoRoot, pPage->pgno);
 		fclose(btree_txn_log_fp);
 	}
+	pthread_mutex_unlock(&btree_txn_log_mutex);
 }
 
 void close_btree_txn_log(){
@@ -5548,7 +5552,9 @@ int sqlite3BtreeFirst(BtCursor *pCur, int *pRes) {
 		rc = SQLITE_OK;
 	}
 	//xyao
-	btree_txn_log_range(pCur, pCur->pPage);
+	if(pCur->pPage){
+		btree_txn_log_range(pCur, pCur->pPage);
+	}
 	//
 	return rc;
 }
@@ -5597,7 +5603,9 @@ int sqlite3BtreeLast(BtCursor *pCur, int *pRes) {
 		rc = SQLITE_OK;
 	}
 	//xyao
-	btree_txn_log_range(pCur, pCur->pPage);
+	if(pCur->pPage){
+		btree_txn_log_range(pCur, pCur->pPage);
+	}
 	//
 	return rc;
 }
@@ -6111,7 +6119,9 @@ int sqlite3BtreeNext(BtCursor *pCur, int flags) {
 		pCur->ix--;
 		// xyao
 		rc = btreeNext(pCur);
-		btree_txn_log_range(pCur, pCur->pPage);
+		if(pCur->pPage){
+			btree_txn_log_range(pCur, pCur->pPage);
+		}
 		return rc;
 	}
 	if (pPage->leaf) {
@@ -6119,7 +6129,9 @@ int sqlite3BtreeNext(BtCursor *pCur, int flags) {
 	} else {
 		// xyao
 		rc = moveToLeftmost(pCur);
-		btree_txn_log_range(pCur, pCur->pPage);
+		if(pCur->pPage){
+			btree_txn_log_range(pCur, pCur->pPage);
+		}
 		return rc;
 	}
 }
@@ -6208,7 +6220,9 @@ int sqlite3BtreePrevious(BtCursor *pCur, int flags) {
 			|| pCur->pPage->leaf == 0) {
 		// xyao
 		rc = btreePrevious(pCur);
-		btree_txn_log_range(pCur, pCur->pPage);
+		if(pCur->pPage){
+			btree_txn_log_range(pCur, pCur->pPage);
+		}
 		return rc;
 	}
 	pCur->ix--;
